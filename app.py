@@ -2,6 +2,7 @@ import os
 import pickle
 import streamlit as st
 from streamlit_option_menu import option_menu
+import numpy as np
 
 # Set page configuration
 st.set_page_config(page_title="Health Assistant",
@@ -35,57 +36,79 @@ with st.sidebar:
 # Diabetes Prediction Page
 if selected == 'Diabetes Prediction':
 
-    # page title
-    st.title('Diabetes Prediction using ML')
+    st.title("Diabetes Prediction")
 
-    # getting the input data from the user
-    col1, col2, col3 = st.columns(3)
+    # Basic numerical inputs
+    Pregnancies = st.number_input("Number of Pregnancies", min_value=0, step=1)
+    SkinThickness = st.number_input("Skin Thickness (mm)", min_value=0.0, step=0.1)
 
-    with col1:
-        Pregnancies = st.text_input('Number of Pregnancies')
+    # Binary inputs with meaningful labels
+    BloodPressure_risk = st.selectbox("Blood Pressure Risk", ["Normal", "High"])
+    BloodPressure_risk = 1 if BloodPressure_risk == "High" else 0
 
-    with col2:
-        Glucose = st.text_input('Glucose Level')
+    Insulin_risk_Normal = st.selectbox("Is Insulin Risk Normal?", ["Yes", "No"])
+    Insulin_risk_Normal = 1 if Insulin_risk_Normal == "Yes" else 0
 
-    with col3:
-        BloodPressure = st.text_input('Blood Pressure value')
+    # Newage (one-hot: mature, senior → young is default if both are 0)
+    Newage = st.selectbox("Age Group", ["Young", "Mature", "Senior"])
+    Newage_mature = 1 if Newage == "Mature" else 0
+    Newage_senior = 1 if Newage == "Senior" else 0
 
-    with col1:
-        SkinThickness = st.text_input('Skin Thickness value')
+    # NewGlucose (one-hot)
+    NewGlucose = st.selectbox("Glucose Level", ["Low", "Normal", "Overweight", "Secret"])
+    NewGlucose_Low = 1 if NewGlucose == "Low" else 0
+    NewGlucose_Normal = 1 if NewGlucose == "Normal" else 0
+    NewGlucose_Overweight = 1 if NewGlucose == "Overweight" else 0
+    NewGlucose_Secret = 1 if NewGlucose == "Secret" else 0
 
-    with col2:
-        Insulin = st.text_input('Insulin Level')
+    # Genetics_risk (one-hot: low, very high → medium/other is default if both are 0)
+    Genetics_risk = st.selectbox("Genetic Risk", ["Normal", "Low", "Very High"])
+    Genetics_risk_low = 1 if Genetics_risk == "Low" else 0
+    Genetics_risk_very_high = 1 if Genetics_risk == "Very High" else 0
 
-    with col3:
-        BMI = st.text_input('BMI value')
+    # BMI_risk (one-hot: obesity_1, obesity_2, overweight, rare)
+    BMI_risk = st.selectbox("BMI Risk Category", ["Normal", "Obesity_1", "Obesity_2", "Overweight", "Rare"])
+    BMI_risk_Obesity_1 = 1 if BMI_risk == "Obesity_1" else 0
+    BMI_risk_Obesity_2 = 1 if BMI_risk == "Obesity_2" else 0
+    BMI_risk_Overweight = 1 if BMI_risk == "Overweight" else 0
+    BMI_risk_Rare = 1 if BMI_risk == "Rare" else 0
 
-    with col1:
-        DiabetesPedigreeFunction = st.text_input('Diabetes Pedigree Function value')
+    # Run prediction
+    if st.button("Predict"):
+        # Match the input format your model expects (16 features)
+        sample_data = np.array([[
+            Pregnancies,
+            SkinThickness,
+            BloodPressure_risk,
+            Insulin_risk_Normal,
+            Newage_mature,
+            Newage_senior,
+            NewGlucose_Low,
+            NewGlucose_Normal,
+            NewGlucose_Overweight,
+            NewGlucose_Secret,
+            Genetics_risk_low,
+            Genetics_risk_very_high,
+            BMI_risk_Obesity_1,
+            BMI_risk_Obesity_2,
+            BMI_risk_Overweight,
+            BMI_risk_Rare
+        ]])
+        
+        try:
+            # Load the .sav model
+            with open("saved_models/features_diabetes_model.sav", "rb") as model_file:
+                model = pickle.load(model_file)
 
-    with col2:
-        Age = st.text_input('Age of the Person')
+            prediction = model.predict(sample_data)
 
+            if prediction[0] == 1:
+                st.error("The model predicts: Positive for Diabetes")
+            else:
+                st.success("The model predicts: Negative for Diabetes")
 
-    # code for Prediction
-    diab_diagnosis = ''
-
-    # creating a button for Prediction
-
-    if st.button('Diabetes Test Result'):
-
-        user_input = [Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin,
-                      BMI, DiabetesPedigreeFunction, Age]
-
-        user_input = [float(x) for x in user_input]
-
-        diab_prediction = diabetes_model.predict([user_input])
-
-        if diab_prediction[0] == 1:
-            diab_diagnosis = 'The person is diabetic'
-        else:
-            diab_diagnosis = 'The person is not diabetic'
-
-    st.success(diab_diagnosis)
+        except Exception as e:
+            st.error(f"Model error: {e}")
 
 # Heart Disease Prediction Page
 if selected == 'Heart Disease Prediction':
